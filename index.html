@@ -263,12 +263,8 @@ button.primary:hover { background: #333; }
     <legend>1. 제품</legend>
     <select id="product"></select>
     <div id="mixProductPicker" style="display:none; margin-top:10px;">
-      <div class="hint" style="margin-bottom:6px;">추가할 제품을 고르고 버튼을 누르면 캔버스에 하나씩 놓입니다. 놓인 제품은 미리보기에서 클릭해 선택한 뒤 드래그로 위치를, 왼쪽 "공통 조정" 패널에서 크기·회전을 조절하세요.</div>
-      <select id="mixProductToAdd"></select>
-      <div style="display:flex; gap:6px; margin-top:6px;">
-        <button type="button" id="mixAddProductBtn" class="secondary" style="flex:1;">+ 제품 추가</button>
-        <button type="button" id="mixRemoveSelectedBtn" class="secondary" style="flex:1;">선택 삭제</button>
-      </div>
+      <div class="hint" style="margin-bottom:6px;">추가할 제품을 체크하세요. 체크하면 캔버스에 바로 놓이고, 체크 해제하면 사라집니다. 미리보기에서 클릭해 선택한 뒤 드래그로 위치를, 왼쪽 "공통 조정" 패널에서 크기·회전을 조절하세요.</div>
+      <div id="mixProductList" style="display:flex; flex-wrap:wrap; gap:6px 14px;"></div>
       <div id="mixInstanceList" class="hint" style="margin-top:6px;">아직 추가된 제품이 없습니다.</div>
     </div>
   </fieldset>
@@ -690,11 +686,7 @@ function findMixInstanceAt(pt) {
   return -1;
 }
 const mixProductPicker = document.getElementById('mixProductPicker');
-const mixProductToAdd = document.getElementById('mixProductToAdd');
-Object.entries(ASSETS.products).forEach(([key, p]) => {
-  const opt = document.createElement('option'); opt.value = key; opt.textContent = p.label;
-  mixProductToAdd.appendChild(opt);
-});
+const mixProductList = document.getElementById('mixProductList');
 function renderMixInstanceList() {
   const el = document.getElementById('mixInstanceList');
   if (!el) return;
@@ -702,25 +694,34 @@ function renderMixInstanceList() {
     ? '아직 추가된 제품이 없습니다.'
     : `현재 ${mixInstances.length}개 배치됨 (미리보기에서 클릭해 선택 후 이동/삭제)`;
 }
-document.getElementById('mixAddProductBtn').addEventListener('click', () => {
-  const key = mixProductToAdd.value;
-  if (!key || !ASSETS.products[key]) return;
-  const offset = (mixInstances.length % 6) * 28;
-  mixInstances.push({ key, x: 540 + offset, y: 380 + offset, scale: 100, rotation: 0 });
-  selectedMixIndex = mixInstances.length - 1;
-  selectedTarget = 'product';
-  renderMixInstanceList();
-  updateCommonPanelUI();
-  scheduleRender();
-});
-document.getElementById('mixRemoveSelectedBtn').addEventListener('click', () => {
-  if (selectedMixIndex == null || !mixInstances[selectedMixIndex]) return;
-  mixInstances.splice(selectedMixIndex, 1);
-  selectedMixIndex = null;
-  selectedTarget = null;
-  renderMixInstanceList();
-  updateCommonPanelUI();
-  scheduleRender();
+Object.entries(ASSETS.products).forEach(([key, p]) => {
+  const label = document.createElement('label');
+  label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; cursor:pointer;';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.id = 'mixProduct_' + key; cb.className = 'mix-product-checkbox'; cb.value = key;
+  cb.addEventListener('change', () => {
+    if (cb.checked) {
+      // 체크: 캔버스에 이 제품 인스턴스를 하나 추가하고 바로 선택 상태로 만든다 (드래그/크기/회전 조절 가능)
+      const offset = (mixInstances.length % 6) * 28;
+      mixInstances.push({ key, x: 540 + offset, y: 380 + offset, scale: 100, rotation: 0 });
+      selectedMixIndex = mixInstances.length - 1;
+      selectedTarget = 'product';
+    } else {
+      // 체크 해제: 이 제품의 인스턴스를 제거 (동일 key는 체크박스당 1개만 유지)
+      const idx = mixInstances.findIndex(inst => inst.key === key);
+      if (idx !== -1) {
+        mixInstances.splice(idx, 1);
+        if (selectedMixIndex === idx) { selectedMixIndex = null; selectedTarget = null; }
+        else if (selectedMixIndex != null && selectedMixIndex > idx) { selectedMixIndex -= 1; }
+      }
+    }
+    renderMixInstanceList();
+    updateCommonPanelUI();
+    scheduleRender();
+  });
+  label.appendChild(cb);
+  label.appendChild(document.createTextNode(p.label));
+  mixProductList.appendChild(label);
 });
 function updateMixPickerVisibility() {
   const active = isMixModeActive();
