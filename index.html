@@ -707,6 +707,19 @@ function findMixInstanceAt(pt) {
 }
 const mixProductPicker = document.getElementById('mixProductPicker');
 const mixProductList = document.getElementById('mixProductList');
+// 제품 타입별 실제 상대 크기 비율 — 세연님이 보내주신 참고 사진(토너/세럼/크림/랩핑마스크 실제 병 사진)에서
+// 각 제품의 픽셀 높이를 실측해 비율로 환산함. 그동안 모든 누끼 이미지를 700px로 통일해서 임베드해뒀던 탓에
+// 실제로는 훨씬 작은 크림 통까지 토너 병과 똑같은 높이로 캔버스에 놓이던 문제를 기본 배치 단계에서 보정한다.
+// (토너=1.00 기준, 세럼 0.98, 랩핑마스크 0.95, 크림 0.38 — 사용자가 크기 슬라이더로 더 조절하는 건 그대로 가능)
+const PRODUCT_TYPE_SIZE_RATIO = { toner: 1.00, serum: 0.98, wrap_mask: 0.95, cream: 0.38 };
+function getProductSizeRatio(key) {
+  if (!key) return 1;
+  if (key.endsWith('wrap_mask')) return PRODUCT_TYPE_SIZE_RATIO.wrap_mask;
+  if (key.endsWith('toner')) return PRODUCT_TYPE_SIZE_RATIO.toner;
+  if (key.endsWith('serum')) return PRODUCT_TYPE_SIZE_RATIO.serum;
+  if (key.endsWith('cream')) return PRODUCT_TYPE_SIZE_RATIO.cream;
+  return 1; // 폴더/파일에서 직접 가져온 커스텀 이미지 등 타입을 알 수 없는 경우는 보정하지 않음
+}
 function mixInstanceLabel(inst) {
   if (inst.key) return (ASSETS.products[inst.key] && ASSETS.products[inst.key].label) || inst.key;
   return inst.label || '가져온 이미지';
@@ -2073,7 +2086,8 @@ async function render() {
       if (!imgSrc) { mixInstanceBoxes[i] = null; continue; }
       const rawImg = await loadImage(imgSrc);
       const outlinedImg = addCutoutOutline(rawImg, cutoutStrokeColor, cutoutStrokeWidth);
-      const targetH = CANVAS * (600 / 1080) * ((inst.scale || 100) / 100);
+      const sizeRatio = inst.customSrc ? 1 : getProductSizeRatio(inst.key);
+      const targetH = CANVAS * (600 / 1080) * ((inst.scale || 100) / 100) * sizeRatio;
       const targetW = targetH * (outlinedImg.width / outlinedImg.height);
       const cx = inst.x, cy = inst.y;
       ctx.save();
@@ -2092,7 +2106,8 @@ async function render() {
     const productScale = commonAdjust.product.scale;
     const productX = productPos.x;
     const productY = productPos.y;
-    const targetH = CANVAS * (600 / 1080) * (productScale / 100);
+    const sizeRatio = cutoutFile ? 1 : getProductSizeRatio(productKey);
+    const targetH = CANVAS * (600 / 1080) * (productScale / 100) * sizeRatio;
     const targetW = targetH * (prodImg.width / prodImg.height);
     const px = productX - targetW / 2;
     const py = productY;
