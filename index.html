@@ -711,7 +711,9 @@ const mixProductList = document.getElementById('mixProductList');
 // 각 제품의 픽셀 높이를 실측해 비율로 환산함. 그동안 모든 누끼 이미지를 700px로 통일해서 임베드해뒀던 탓에
 // 실제로는 훨씬 작은 크림 통까지 토너 병과 똑같은 높이로 캔버스에 놓이던 문제를 기본 배치 단계에서 보정한다.
 // (토너=1.00 기준, 세럼 0.98, 랩핑마스크 0.95, 크림 0.38 — 사용자가 크기 슬라이더로 더 조절하는 건 그대로 가능)
-const PRODUCT_TYPE_SIZE_RATIO = { toner: 1.00, serum: 0.98, wrap_mask: 0.95, cream: 0.38 };
+const PRODUCT_TYPE_SIZE_RATIO = { toner: 1.00, serum: 0.65, wrap_mask: 0.95, cream: 0.38 };
+// (2026-09-03 재조정: 세럼은 드롭퍼/캡까지 포함한 전체 높이로 측정하면 토너와 비슷해 보이지만,
+// 실제 유리병 몸통만 보면 토너보다 훨씬 작다는 피드백을 받아 0.98 → 0.65로 낮춤)
 // 위 타입별 목표 비율만으로는 부족했음: 700px로 통일 임베드된 원본 누끼 이미지마다 실제 제품이
 // 프레임을 채우는 정도(위아래 여백)가 서로 달라서, 같은 "크림"이어도 여백이 적은 사진(꽉 차게 잘림)은
 // 크게, 여백이 많은 사진은 작게 보이는 문제가 있었다(예: 핑크 크림은 프레임에 꽉 참, 하늘색 크림은
@@ -720,11 +722,11 @@ const PRODUCT_TYPE_SIZE_RATIO = { toner: 1.00, serum: 0.98, wrap_mask: 0.95, cre
 // 제품별(17개 전부) 최종 배율. 이렇게 하면 이미지 자체(여백 포함)는 제품마다 다르게 그려지지만,
 // 실제로 눈에 보이는 "제품 내용물" 크기는 같은 타입끼리 정확히 일치한다.
 const PRODUCT_SIZE_FACTOR = {
-  lush_blush_serum: 0.980, lush_blush_cream: 0.380, lush_blush_toner: 1.092, nad_wrap_mask: 1.088,
-  vitamin_glow_serum: 0.980, vitamin_glow_cream: 0.380, vitamin_glow_toner: 1.094, vitamin_wrap_mask: 1.088,
-  b_serum: 1.117, b_cream: 0.383, b_toner: 1.095,
-  h_serum: 1.100, h_cream: 0.440, h_toner: 1.091,
-  a_serum: 1.117, a_cream: 0.462, a_toner: 1.091,
+  lush_blush_serum: 0.650, lush_blush_cream: 0.380, lush_blush_toner: 1.092, nad_wrap_mask: 1.088,
+  vitamin_glow_serum: 0.650, vitamin_glow_cream: 0.380, vitamin_glow_toner: 1.094, vitamin_wrap_mask: 1.088,
+  b_serum: 0.741, b_cream: 0.383, b_toner: 1.095,
+  h_serum: 0.730, h_cream: 0.440, h_toner: 1.091,
+  a_serum: 0.741, a_cream: 0.462, a_toner: 1.091,
 };
 function getProductSizeRatio(key) {
   if (!key) return 1;
