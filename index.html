@@ -204,6 +204,10 @@ button.primary:hover { background: #333; }
       <label>자간 (<span id="commonLetterSpacingLabel">0</span>px)</label>
       <input type="range" id="commonLetterSpacing" min="-30" max="30" step="1" value="0" style="width:100%;">
     </div>
+    <div id="commonRotationRow" style="display:none;">
+      <label>회전 (<span id="commonRotationLabel">0</span>°)</label>
+      <input type="range" id="commonRotation" min="-180" max="180" step="1" value="0" style="width:100%;">
+    </div>
     <label>정렬</label>
     <div class="align-row" id="commonAlignRow">
       <button type="button" class="align-btn" data-align="left" title="왼쪽 정렬">
@@ -259,8 +263,13 @@ button.primary:hover { background: #333; }
     <legend>1. 제품</legend>
     <select id="product"></select>
     <div id="mixProductPicker" style="display:none; margin-top:10px;">
-      <div class="hint" style="margin-bottom:6px;">혼합할 제품을 2개 이상 선택하세요. 선택한 제품들이 순서대로 반복되며 배치됩니다.</div>
-      <div id="mixProductList" style="display:flex; flex-wrap:wrap; gap:6px 14px;"></div>
+      <div class="hint" style="margin-bottom:6px;">추가할 제품을 고르고 버튼을 누르면 캔버스에 하나씩 놓입니다. 놓인 제품은 미리보기에서 클릭해 선택한 뒤 드래그로 위치를, 왼쪽 "공통 조정" 패널에서 크기·회전을 조절하세요.</div>
+      <select id="mixProductToAdd"></select>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" id="mixAddProductBtn" class="secondary" style="flex:1;">+ 제품 추가</button>
+        <button type="button" id="mixRemoveSelectedBtn" class="secondary" style="flex:1;">선택 삭제</button>
+      </div>
+      <div id="mixInstanceList" class="hint" style="margin-top:6px;">아직 추가된 제품이 없습니다.</div>
     </div>
   </fieldset>
 
@@ -269,29 +278,31 @@ button.primary:hover { background: #333; }
     <select id="layout"><option value="PSY_Layout_01">PSY_Layout_01 (기본)</option></select>
     <div class="hint">추가 레이아웃은 추후 여기 목록에 계속 추가됩니다.</div>
 
-    <label>제품 누끼 개수</label>
-    <select id="productCount">
-      <option value="0">0개 (표시 안 함)</option>
-      <option value="1" selected>1개 (기본)</option>
-      <option value="2">2개</option>
-      <option value="3">3개</option>
-      <option value="4">4개</option>
-      <option value="5">5개</option>
-      <option value="6">6개</option>
-      <option value="7">7개</option>
-      <option value="8">8개</option>
-      <option value="9">9개</option>
-      <option value="10">10개</option>
-    </select>
+    <div id="singleModeLayoutControls">
+      <label>제품 누끼 개수</label>
+      <select id="productCount">
+        <option value="0">0개 (표시 안 함)</option>
+        <option value="1" selected>1개 (기본)</option>
+        <option value="2">2개</option>
+        <option value="3">3개</option>
+        <option value="4">4개</option>
+        <option value="5">5개</option>
+        <option value="6">6개</option>
+        <option value="7">7개</option>
+        <option value="8">8개</option>
+        <option value="9">9개</option>
+        <option value="10">10개</option>
+      </select>
 
-    <label>배치 줄 수 (2개 이상일 때 적용)</label>
-    <select id="productRows">
-      <option value="1" selected>1줄</option>
-      <option value="2">2줄</option>
-      <option value="3">3줄</option>
-    </select>
-    <div class="hint">같은 제품 누끼를 선택한 개수만큼, 선택한 줄 수에 맞춰 격자로 배치합니다 (떼샷 연출).</div>
-    <div class="hint">누끼 사이 간격, 제품 크기, 정렬은 왼쪽 "공통 조정" 패널로 옮겼습니다. 미리보기에서 제품을 클릭해 선택하세요.</div>
+      <label>배치 줄 수 (2개 이상일 때 적용)</label>
+      <select id="productRows">
+        <option value="1" selected>1줄</option>
+        <option value="2">2줄</option>
+        <option value="3">3줄</option>
+      </select>
+      <div class="hint">같은 제품 누끼를 선택한 개수만큼, 선택한 줄 수에 맞춰 격자로 배치합니다 (떼샷 연출).</div>
+      <div class="hint">누끼 사이 간격, 제품 크기, 정렬은 왼쪽 "공통 조정" 패널로 옮겼습니다. 미리보기에서 제품을 클릭해 선택하세요.</div>
+    </div>
 
     <label>누끼컷 스트로크 (제품 이미지 · 추가 누끼컷 공통, <span id="cutoutStrokeWidthLabel">0</span>px)</label>
     <div class="color-row">
@@ -662,23 +673,60 @@ Object.entries(ASSETS.products).forEach(([key, p]) => {
   const opt = document.createElement('option'); opt.value = key; opt.textContent = p.label;
   productSel.appendChild(opt);
 });
-// ---------- 제품 혼합: 여러 제품을 체크박스로 선택 ----------
-const mixProductPicker = document.getElementById('mixProductPicker');
-const mixProductList = document.getElementById('mixProductList');
-Object.entries(ASSETS.products).forEach(([key, p]) => {
-  const label = document.createElement('label');
-  label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; cursor:pointer;';
-  const cb = document.createElement('input');
-  cb.type = 'checkbox'; cb.id = 'mixProduct_' + key; cb.className = 'mix-product-checkbox'; cb.value = key;
-  label.appendChild(cb);
-  label.appendChild(document.createTextNode(p.label));
-  mixProductList.appendChild(label);
-});
-function getCheckedMixProductKeys() {
-  return Array.from(document.querySelectorAll('.mix-product-checkbox:checked')).map(cb => cb.value);
+// ---------- 제품 혼합: 제품을 하나씩 추가해서 개별적으로 배치 ----------
+let mixInstances = []; // { key, x, y, scale, rotation } 배열 - 캔버스에 놓인 낱개 제품들
+let selectedMixIndex = null; // mixInstances 중 현재 선택된 항목의 인덱스
+let mixInstanceBoxes = []; // 마지막 렌더 기준 각 인스턴스의 히트테스트/정렬용 박스
+function isMixModeActive() {
+  return productSel.value === 'mix';
 }
+function activeMixInstance() {
+  return (isMixModeActive() && selectedMixIndex != null) ? mixInstances[selectedMixIndex] : null;
+}
+function findMixInstanceAt(pt) {
+  for (let i = mixInstanceBoxes.length - 1; i >= 0; i--) {
+    if (pointInBox(pt, mixInstanceBoxes[i])) return i;
+  }
+  return -1;
+}
+const mixProductPicker = document.getElementById('mixProductPicker');
+const mixProductToAdd = document.getElementById('mixProductToAdd');
+Object.entries(ASSETS.products).forEach(([key, p]) => {
+  const opt = document.createElement('option'); opt.value = key; opt.textContent = p.label;
+  mixProductToAdd.appendChild(opt);
+});
+function renderMixInstanceList() {
+  const el = document.getElementById('mixInstanceList');
+  if (!el) return;
+  el.textContent = mixInstances.length === 0
+    ? '아직 추가된 제품이 없습니다.'
+    : `현재 ${mixInstances.length}개 배치됨 (미리보기에서 클릭해 선택 후 이동/삭제)`;
+}
+document.getElementById('mixAddProductBtn').addEventListener('click', () => {
+  const key = mixProductToAdd.value;
+  if (!key || !ASSETS.products[key]) return;
+  const offset = (mixInstances.length % 6) * 28;
+  mixInstances.push({ key, x: 540 + offset, y: 380 + offset, scale: 100, rotation: 0 });
+  selectedMixIndex = mixInstances.length - 1;
+  selectedTarget = 'product';
+  renderMixInstanceList();
+  updateCommonPanelUI();
+  scheduleRender();
+});
+document.getElementById('mixRemoveSelectedBtn').addEventListener('click', () => {
+  if (selectedMixIndex == null || !mixInstances[selectedMixIndex]) return;
+  mixInstances.splice(selectedMixIndex, 1);
+  selectedMixIndex = null;
+  selectedTarget = null;
+  renderMixInstanceList();
+  updateCommonPanelUI();
+  scheduleRender();
+});
 function updateMixPickerVisibility() {
-  mixProductPicker.style.display = productSel.value === 'mix' ? '' : 'none';
+  const active = isMixModeActive();
+  mixProductPicker.style.display = active ? '' : 'none';
+  document.getElementById('singleModeLayoutControls').style.display = active ? 'none' : '';
+  if (!active) { selectedMixIndex = null; }
 }
 productSel.addEventListener('change', updateMixPickerVisibility);
 updateMixPickerVisibility();
@@ -1249,45 +1297,6 @@ function addCutoutOutline(img, color, width) {
   octx.drawImage(img, pad, pad);
   return out;
 }
-function buildProductGridMixed(imgList, rows, spacingPercent) {
-  const count = imgList.length;
-  if (count <= 1) return imgList[0];
-  const cols = Math.ceil(count / rows);
-  const stepFrac = (typeof spacingPercent === 'number' && !isNaN(spacingPercent) ? spacingPercent : 60) / 100;
-  // 모든 제품 누끼 이미지는 공통 높이(700px)로 정규화되어 있어, 셀 높이는 고정하고
-  // 셀 폭은 이번에 배치되는 이미지 중 가장 넓은 것을 기준으로 잡아 서로 겹치지 않게 한다.
-  const cellH = Math.max(...imgList.map(im => im.height));
-  const cellW = Math.max(...imgList.map(im => im.width));
-  const stepX = cellW * stepFrac;
-  const stepY = cellH * stepFrac;
-  const gridW = cellW + stepX * (cols - 1);
-  const gridH = cellH + stepY * (rows - 1);
-  const off = document.createElement('canvas');
-  off.width = Math.round(gridW); off.height = Math.round(gridH);
-  const octx = off.getContext('2d');
-  for (let r = 0; r < rows; r++) {
-    const remaining = count - r * cols;
-    if (remaining <= 0) break;
-    const itemsInRow = Math.min(cols, remaining);
-    const rowWidth = cellW + stepX * (itemsInRow - 1);
-    const rowOffsetX = (gridW - rowWidth) / 2;
-    let drawOrder;
-    if (itemsInRow % 2 === 1) {
-      const centerIdx = (itemsInRow - 1) / 2;
-      drawOrder = Array.from({ length: itemsInRow }, (_, c) => c)
-        .sort((a, b) => Math.abs(b - centerIdx) - Math.abs(a - centerIdx));
-    } else {
-      drawOrder = Array.from({ length: itemsInRow }, (_, c) => c);
-    }
-    for (const c of drawOrder) {
-      const im = imgList[r * cols + c];
-      const x = rowOffsetX + c * stepX + (cellW - im.width) / 2;
-      const y = r * stepY + (cellH - im.height);
-      octx.drawImage(im, x, y);
-    }
-  }
-  return off;
-}
 function buildProductGrid(img, count, rows, spacingPercent) {
   if (count <= 1) return img;
   const cols = Math.ceil(count / rows);
@@ -1355,8 +1364,8 @@ let snapH = false; // 드래그 중 세로 중앙(가로선)에 자석처럼 붙
 const SNAP_THRESHOLD = 14; // 캔버스 좌표 기준 스냅 감지 거리(px)
 
 // 왼쪽 "공통 조정" 패널이 다루는 대상별 상태 (미리보기에서 클릭해 선택한 요소에 맞춰 노출됨)
-const POS_MAP = { badge: () => badgePos, product: () => productPos, mainCopy: () => mainCopyPos, mainCopy2: () => mainCopy2Pos, subCopy: () => subCopyPos, bg: () => bgPos };
-const BOX_MAP = { badge: () => lastBadgeBox, product: () => lastProductBox, mainCopy: () => lastMainCopyBox, mainCopy2: () => lastMainCopy2Box, subCopy: () => lastSubCopyBox, bg: () => lastBgBox, ctaEmphasis: () => lastCtaEmphasisBox, ctaText: () => lastCtaTextBox };
+const POS_MAP = { badge: () => badgePos, product: () => (activeMixInstance() || productPos), mainCopy: () => mainCopyPos, mainCopy2: () => mainCopy2Pos, subCopy: () => subCopyPos, bg: () => bgPos };
+const BOX_MAP = { badge: () => lastBadgeBox, product: () => (isMixModeActive() ? (selectedMixIndex != null ? mixInstanceBoxes[selectedMixIndex] : null) : lastProductBox), mainCopy: () => lastMainCopyBox, mainCopy2: () => lastMainCopy2Box, subCopy: () => lastSubCopyBox, bg: () => lastBgBox, ctaEmphasis: () => lastCtaEmphasisBox, ctaText: () => lastCtaTextBox };
 const TARGET_LABELS = { product: '제품', mainCopy: '메인 카피', mainCopy2: '메인 카피 2', subCopy: '서브 카피', badge: '배지', bg: '배경 사진', ctaEmphasis: '강조문구', ctaText: '보조문구' };
 // 히트 테스트 우선순위: 화면 위쪽(나중에 그려짐)에 있는 요소부터 검사 (배경은 맨 아래 레이어라 가장 마지막에 검사)
 const HIT_ORDER = ['badge', 'mainCopy', 'mainCopy2', 'subCopy', 'product', 'bg'];
@@ -1407,6 +1416,7 @@ function pointInBox(pt, box) {
   return !!box && pt.x >= box.x && pt.x <= box.x + box.w && pt.y >= box.y && pt.y <= box.y + box.h;
 }
 function hitTest(pt) {
+  if (isMixModeActive() && findMixInstanceAt(pt) !== -1) return 'product';
   for (const key of HIT_ORDER) {
     if (pointInBox(pt, BOX_MAP[key]())) return key;
   }
@@ -1455,12 +1465,19 @@ function updateCommonPanelUI() {
   if (!selectedTarget) { hint.style.display = 'block'; body.style.display = 'none'; return; }
   hint.style.display = 'none'; body.style.display = 'block';
   document.getElementById('commonTargetLabel').textContent = TARGET_LABELS[selectedTarget] || selectedTarget;
-  const cfg = commonAdjust[selectedTarget]; // 배지처럼 크기/자간 개념이 없는 대상은 undefined
+  const mixInst = selectedTarget === 'product' ? activeMixInstance() : null;
+  const cfg = mixInst || commonAdjust[selectedTarget]; // 배지처럼 크기/자간 개념이 없는 대상은 undefined
   document.getElementById('commonScaleRow').style.display = cfg ? 'block' : 'none';
   const hasSpacing = cfg && ('spacing' in cfg);
   const hasLetterSpacing = cfg && ('letterSpacing' in cfg);
+  const hasRotation = cfg && ('rotation' in cfg);
   document.getElementById('commonSpacingRow').style.display = hasSpacing ? 'block' : 'none';
   document.getElementById('commonLetterSpacingRow').style.display = hasLetterSpacing ? 'block' : 'none';
+  document.getElementById('commonRotationRow').style.display = hasRotation ? 'block' : 'none';
+  if (hasRotation) {
+    document.getElementById('commonRotation').value = cfg.rotation;
+    document.getElementById('commonRotationLabel').textContent = cfg.rotation;
+  }
   if (!cfg) return;
   const scaleProp = SCALE_PROP[selectedTarget] || 'scale';
   const scaleRange = SCALE_RANGE[selectedTarget] || DEFAULT_SCALE_RANGE;
@@ -1497,6 +1514,10 @@ document.querySelectorAll('[data-auto-target]').forEach(container => {
 function onDragStart(evt) {
   const pt = getCanvasPos(evt);
   let hit = hitTest(pt);
+  if (isMixModeActive()) {
+    const idx = hit === 'product' ? findMixInstanceAt(pt) : -1;
+    selectedMixIndex = idx === -1 ? null : idx;
+  }
   // 배경 사진(bg)은 캔버스 전체를 덮는 박스라 hitTest가 거의 항상 'bg'를 반환한다.
   // 그 위에 그려지는 하단 CTA(강조문구/보조문구)가 더 우선순위가 높아야 하므로,
   // bg로 잡히거나 아무것도 안 잡힌 경우에는 CTA 영역인지 한 번 더 확인한다.
@@ -1607,10 +1628,19 @@ bgTextureStrengthSlider.addEventListener('input', () => {
 });
 document.getElementById('commonScale').addEventListener('input', (e) => {
   if (!selectedTarget) return;
+  const mixInst = selectedTarget === 'product' ? activeMixInstance() : null;
+  const cfg = mixInst || commonAdjust[selectedTarget];
   const scaleProp = SCALE_PROP[selectedTarget] || 'scale';
   const parsed = parseInt(e.target.value, 10);
-  commonAdjust[selectedTarget][scaleProp] = isNaN(parsed) ? commonAdjust[selectedTarget][scaleProp] : parsed;
+  cfg[scaleProp] = isNaN(parsed) ? cfg[scaleProp] : parsed;
   document.getElementById('commonScaleLabel').textContent = e.target.value;
+  scheduleRender();
+});
+document.getElementById('commonRotation').addEventListener('input', (e) => {
+  const mixInst = activeMixInstance();
+  if (!mixInst) return;
+  mixInst.rotation = parseInt(e.target.value, 10) || 0;
+  document.getElementById('commonRotationLabel').textContent = e.target.value;
   scheduleRender();
 });
 document.getElementById('commonSpacing').addEventListener('input', (e) => {
@@ -1756,7 +1786,6 @@ async function render() {
   const productKey = productSel.value;
   const isMixMode = productKey === 'mix';
   const product = (productKey === 'none' || isMixMode) ? null : ASSETS.products[productKey];
-  const mixProductKeys = isMixMode ? getCheckedMixProductKeys() : [];
 
   const mainCopy2 = applyTextCase(getMainCopy2(), mainStyleState2.textCase);
   const mainCopy = applyTextCase(getMainCopy(), mainStyleState.textCase);
@@ -1830,23 +1859,31 @@ async function render() {
 
   lastProductBox = null;
   const productCount = parseInt(document.getElementById('productCount').value, 10);
-  if ((product || cutoutFile || (isMixMode && mixProductKeys.length > 0)) && productCount > 0) {
+  const cutoutStrokeColor = document.getElementById('cutoutStrokeColor').value;
+  const cutoutStrokeWidth = parseInt(document.getElementById('cutoutStrokeWidth').value, 10) || 0;
+  if (isMixMode) {
+    mixInstanceBoxes = [];
+    for (let i = 0; i < mixInstances.length; i++) {
+      const inst = mixInstances[i];
+      const info = ASSETS.products[inst.key];
+      if (!info) { mixInstanceBoxes[i] = null; continue; }
+      const rawImg = await loadImage(info.image);
+      const outlinedImg = addCutoutOutline(rawImg, cutoutStrokeColor, cutoutStrokeWidth);
+      const targetH = CANVAS * (600 / 1080) * ((inst.scale || 100) / 100);
+      const targetW = targetH * (outlinedImg.width / outlinedImg.height);
+      const cx = inst.x, cy = inst.y;
+      ctx.save();
+      ctx.translate(cx, cy + targetH / 2);
+      ctx.rotate((inst.rotation || 0) * Math.PI / 180);
+      ctx.drawImage(outlinedImg, -targetW / 2, -targetH / 2, targetW, targetH);
+      ctx.restore();
+      mixInstanceBoxes[i] = { x: cx - targetW / 2, y: cy, w: targetW, h: targetH };
+    }
+  } else if ((product || cutoutFile) && productCount > 0) {
     const productRows = parseInt(document.getElementById('productRows').value, 10);
     const productSpacing = commonAdjust.product.spacing;
-    let griddedImg;
-    if (isMixMode) {
-      const mixImgs = [];
-      for (let i = 0; i < productCount; i++) {
-        const key = mixProductKeys[i % mixProductKeys.length];
-        mixImgs.push(await loadImage(ASSETS.products[key].image));
-      }
-      griddedImg = buildProductGridMixed(mixImgs, productRows, productSpacing);
-    } else {
-      const singleImg = await loadImage(cutoutFile ? await fileToDataUrl(cutoutFile) : product.image);
-      griddedImg = buildProductGrid(singleImg, productCount, productRows, productSpacing);
-    }
-    const cutoutStrokeColor = document.getElementById('cutoutStrokeColor').value;
-    const cutoutStrokeWidth = parseInt(document.getElementById('cutoutStrokeWidth').value, 10) || 0;
+    const singleImg = await loadImage(cutoutFile ? await fileToDataUrl(cutoutFile) : product.image);
+    const griddedImg = buildProductGrid(singleImg, productCount, productRows, productSpacing);
     const prodImg = addCutoutOutline(griddedImg, cutoutStrokeColor, cutoutStrokeWidth);
     const productScale = commonAdjust.product.scale;
     const productX = productPos.x;
