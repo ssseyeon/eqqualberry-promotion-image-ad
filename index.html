@@ -181,6 +181,31 @@ button.primary:hover { background: #333; }
 .common-panel .color-row span { flex-shrink: 0; font-size: 10px; }
 .common-panel input[type="color"] { flex-shrink: 0; width: 22px; height: 22px; padding: 1px; }
 .common-panel input[type="number"] { flex-shrink: 0; width: 26px !important; padding: 2px !important; font-size: 11px; }
+.folder-import-btn { margin-top: 6px; width: 100%; padding: 7px; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; background: #f7f7f7; cursor: pointer; color: #333; }
+.folder-import-btn:hover { background: #eee; }
+.folder-picker-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
+.folder-picker-box { background: #fff; width: min(720px, 92vw); height: min(600px, 86vh); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
+.folder-picker-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #eee; font-weight: 600; font-size: 14px; }
+.folder-picker-header-actions { display: flex; gap: 6px; }
+.folder-picker-header-actions button { font-size: 12px; padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
+.folder-picker-header-actions button:hover { background: #f5f5f5; }
+.folder-picker-breadcrumb { padding: 8px 16px; font-size: 12px; color: #666; border-bottom: 1px solid #f0f0f0; }
+.folder-crumb-btn { border: none; background: none; color: #666; font-size: 12px; cursor: pointer; padding: 0; }
+.folder-crumb-btn:hover { text-decoration: underline; color: #111; }
+.folder-picker-grid { flex: 1; overflow-y: auto; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; align-content: start; }
+.folder-picker-tile { cursor: pointer; border: 1px solid #eee; border-radius: 8px; padding: 6px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.folder-picker-tile:hover { border-color: #aaa; background: #fafafa; }
+.folder-picker-tile img { width: 100%; height: 76px; object-fit: contain; background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 50% / 12px 12px; border-radius: 4px; }
+.folder-picker-folder-icon { font-size: 34px; height: 76px; display: flex; align-items: center; justify-content: center; }
+.folder-picker-name { font-size: 11px; color: #444; word-break: break-all; line-height: 1.3; }
+#layersList { display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow-y: auto; margin-top: 4px; }
+.layer-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #333; }
+.layer-row:hover { background: #f2f2f2; }
+.layer-row.selected { background: #111; color: #fff; }
+.layer-row-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-row-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.layer-order-btn { font-size: 10px; width: 18px; height: 18px; line-height: 1; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; padding: 0; }
+.layer-order-btn:disabled { opacity: 0.3; cursor: default; }
 </style>
 </head>
 <body>
@@ -231,6 +256,9 @@ button.primary:hover { background: #333; }
     </div>
     <div class="hint">위치는 미리보기에서 드래그로도 옮길 수 있습니다.</div>
   </div>
+  <div class="common-panel-title" style="margin-top:14px;">🗂 레이어</div>
+  <div class="hint" style="margin-bottom:6px;">클릭하면 미리보기에서 선택한 것처럼 그 요소가 선택됩니다. 제품이 여러 개일 때는 ▲▼로 앞뒤 순서를 바꿀 수 있고, 선택 후에는 방향키(↑↓←→)로 위치를 조정할 수 있어요.</div>
+  <div id="layersList"></div>
 </div>
 
 <div class="common-panel" id="commonFontPanel">
@@ -266,6 +294,7 @@ button.primary:hover { background: #333; }
       <div class="hint" style="margin-bottom:6px;">추가할 제품을 체크하세요. 체크하면 캔버스에 바로 놓이고, 체크 해제하면 사라집니다. 미리보기에서 클릭해 선택한 뒤 드래그로 위치를, 왼쪽 "공통 조정" 패널에서 크기·회전을 조절하세요.</div>
       <div id="mixProductList" style="display:flex; flex-wrap:wrap; gap:6px 14px;"></div>
       <div id="mixInstanceList" class="hint" style="margin-top:6px;">아직 추가된 제품이 없습니다.</div>
+      <button type="button" id="mixFolderImportBtn" class="folder-import-btn">📁 폴더에서 사진 가져오기</button>
     </div>
   </fieldset>
 
@@ -552,6 +581,7 @@ button.primary:hover { background: #333; }
     <legend>7. 배경 사진 (선택)</legend>
     <div data-auto-target="bg">
       <input class="file-input" type="file" id="bgFile" accept="image/*">
+      <button type="button" id="bgFolderImportBtn" class="folder-import-btn">📁 폴더에서 사진 가져오기</button>
       <div class="hint">안 넣으면 아래 그라데이션 배경이 자동 적용됩니다.</div>
       <div class="hint">사진을 넣으면 왼쪽 "공통 조정" 패널에서 확대/위치를 조정할 수 있어요. 미리보기에서 드래그도 가능합니다.</div>
     </div>
@@ -597,6 +627,7 @@ button.primary:hover { background: #333; }
   <fieldset data-auto-target="product">
     <legend>8. 추가 누끼컷 (선택)</legend>
     <input class="file-input" type="file" id="cutoutFile" accept="image/*">
+    <button type="button" id="cutoutFolderImportBtn" class="folder-import-btn">📁 폴더에서 사진 가져오기</button>
     <div class="hint">넣으면 1번 제품 이미지 대신 이 파일을 사용합니다.</div>
   </fieldset>
 
@@ -635,6 +666,20 @@ button.primary:hover { background: #333; }
     <div class="warning-title">⚠ 작업자를 선택해주세요</div>
     <div class="warning-text">저장하기 전에 왼쪽 위 "작업자"에서 본인 이름을 선택해주세요.</div>
     <button type="button" id="workerWarningOk">확인</button>
+  </div>
+</div>
+
+<div class="folder-picker-overlay" id="folderPickerOverlay">
+  <div class="folder-picker-box">
+    <div class="folder-picker-header">
+      <span id="folderPickerTitle">폴더에서 사진 가져오기</span>
+      <div class="folder-picker-header-actions">
+        <button type="button" id="folderPickerChangeBtn">다른 폴더 선택</button>
+        <button type="button" id="folderPickerCloseBtn">닫기</button>
+      </div>
+    </div>
+    <div class="folder-picker-breadcrumb" id="folderPickerBreadcrumb"></div>
+    <div class="folder-picker-grid" id="folderPickerGrid"></div>
   </div>
 </div>
 
@@ -687,12 +732,44 @@ function findMixInstanceAt(pt) {
 }
 const mixProductPicker = document.getElementById('mixProductPicker');
 const mixProductList = document.getElementById('mixProductList');
+function mixInstanceLabel(inst) {
+  if (inst.key) return (ASSETS.products[inst.key] && ASSETS.products[inst.key].label) || inst.key;
+  return inst.label || '가져온 이미지';
+}
+function removeMixInstance(i) {
+  const inst = mixInstances[i];
+  if (inst && inst.key) {
+    const cb = document.getElementById('mixProduct_' + inst.key);
+    if (cb) cb.checked = false; // 배열은 아래에서 직접 정리하므로 change 이벤트는 필요 없음(시각적 동기화만)
+  }
+  mixInstances.splice(i, 1);
+  if (selectedMixIndex === i) { selectedMixIndex = null; selectedTarget = null; }
+  else if (selectedMixIndex != null && selectedMixIndex > i) { selectedMixIndex -= 1; }
+  renderMixInstanceList();
+  updateCommonPanelUI();
+  scheduleRender();
+}
 function renderMixInstanceList() {
   const el = document.getElementById('mixInstanceList');
   if (!el) return;
-  el.textContent = mixInstances.length === 0
-    ? '아직 추가된 제품이 없습니다.'
-    : `현재 ${mixInstances.length}개 배치됨 (미리보기에서 클릭해 선택 후 이동/삭제)`;
+  el.innerHTML = '';
+  if (mixInstances.length === 0) {
+    el.textContent = '아직 추가된 제품이 없습니다.';
+    return;
+  }
+  mixInstances.forEach((inst, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:6px; padding:3px 0;' + (i === selectedMixIndex ? ' color:#111; font-weight:600;' : '');
+    const name = document.createElement('span');
+    name.textContent = (i === selectedMixIndex ? '▶ ' : '') + mixInstanceLabel(inst);
+    row.appendChild(name);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button'; removeBtn.textContent = '삭제';
+    removeBtn.style.cssText = 'font-size:11px; padding:2px 6px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; flex-shrink:0;';
+    removeBtn.addEventListener('click', () => removeMixInstance(i));
+    row.appendChild(removeBtn);
+    el.appendChild(row);
+  });
 }
 Object.entries(ASSETS.products).forEach(([key, p]) => {
   const label = document.createElement('label');
@@ -731,6 +808,27 @@ function updateMixPickerVisibility() {
 }
 productSel.addEventListener('change', updateMixPickerVisibility);
 updateMixPickerVisibility();
+document.getElementById('mixFolderImportBtn').addEventListener('click', () => {
+  openFolderPicker(({ dataUrl, name }) => {
+    const offset = (mixInstances.length % 6) * 28;
+    mixInstances.push({ customSrc: dataUrl, label: name.replace(/\.[^.]+$/, ''), x: 540 + offset, y: 380 + offset, scale: 100, rotation: 0 });
+    selectedMixIndex = mixInstances.length - 1;
+    selectedTarget = 'product';
+    renderMixInstanceList();
+    updateCommonPanelUI();
+    scheduleRender();
+  }, '제품 폴더에서 가져오기');
+});
+document.getElementById('bgFolderImportBtn').addEventListener('click', () => {
+  openFolderPicker(({ file }) => {
+    injectFileIntoInput('bgFile', file);
+  }, '배경/제형 사진 폴더에서 가져오기');
+});
+document.getElementById('cutoutFolderImportBtn').addEventListener('click', () => {
+  openFolderPicker(({ file }) => {
+    injectFileIntoInput('cutoutFile', file);
+  }, '누끼컷 폴더에서 가져오기');
+});
 // 프리셋 드롭다운(카피) + "직접 입력" 지원
 function setupPresetSelect(selId, customId, options, { allowBlank = true } = {}) {
   const sel = document.getElementById(selId);
@@ -1379,6 +1477,98 @@ const commonAdjust = {
   bg: { scale: 100 },
 };
 // commonScale 슬라이더는 대상에 따라 "배율(%)"(제품/카피) 또는 "지름(px)"(배지)을 다룬다.
+// ---------- 레이어 패널: 미리보기에 그려진 요소들을 목록으로 보여주고, 클릭으로 선택 / 방향키로 이동 ----------
+// (위쪽에 있을수록 화면에서 더 앞에 보이는 요소. 제품 혼합 인스턴스는 배열 순서 = 겹침 순서라 ▲▼로 바꿀 수 있음)
+const LAYER_DISPLAY_ORDER = ['ctaText', 'ctaEmphasis', 'badge', 'mainCopy2', 'mainCopy', 'subCopy'];
+function selectLayerTarget(target, mixIndex) {
+  selectedTarget = target;
+  selectedMixIndex = (target === 'product' && mixIndex != null) ? mixIndex : null;
+  updateCommonPanelUI();
+  renderLayersPanel();
+  scheduleRender();
+}
+function moveMixInstance(index, dir) {
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= mixInstances.length) return;
+  const [inst] = mixInstances.splice(index, 1);
+  mixInstances.splice(newIndex, 0, inst);
+  if (selectedMixIndex === index) selectedMixIndex = newIndex;
+  else if (selectedMixIndex === newIndex) selectedMixIndex = index;
+  renderMixInstanceList();
+  renderLayersPanel();
+  scheduleRender();
+}
+function renderLayersPanel() {
+  const el = document.getElementById('layersList');
+  if (!el) return;
+  const rows = [];
+  LAYER_DISPLAY_ORDER.forEach(target => {
+    const box = BOX_MAP[target] && BOX_MAP[target]();
+    if (box) rows.push({ target, label: TARGET_LABELS[target] });
+  });
+  if (isMixModeActive()) {
+    for (let i = mixInstances.length - 1; i >= 0; i--) {
+      rows.push({ target: 'product', mixIndex: i, label: mixInstanceLabel(mixInstances[i]), reorderable: true, total: mixInstances.length });
+    }
+  } else if (lastProductBox) {
+    rows.push({ target: 'product', label: TARGET_LABELS.product });
+  }
+  if (lastBgBox) rows.push({ target: 'bg', label: TARGET_LABELS.bg });
+
+  el.innerHTML = '';
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="hint">아직 미리보기에 표시된 요소가 없습니다.</div>';
+    return;
+  }
+  rows.forEach(row => {
+    const isSelected = selectedTarget === row.target && (row.mixIndex == null || row.mixIndex === selectedMixIndex);
+    const rowEl = document.createElement('div');
+    rowEl.className = 'layer-row' + (isSelected ? ' selected' : '');
+    const nameEl = document.createElement('span');
+    nameEl.className = 'layer-row-label';
+    nameEl.textContent = row.label;
+    rowEl.appendChild(nameEl);
+    rowEl.addEventListener('click', (e) => {
+      if (e.target.closest('.layer-order-btn')) return;
+      selectLayerTarget(row.target, row.mixIndex);
+    });
+    if (row.reorderable) {
+      const actions = document.createElement('span');
+      actions.className = 'layer-row-actions';
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button'; upBtn.className = 'layer-order-btn'; upBtn.textContent = '▲'; upBtn.title = '앞으로 (위로)';
+      upBtn.disabled = row.mixIndex === row.total - 1;
+      upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveMixInstance(row.mixIndex, 1); });
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button'; downBtn.className = 'layer-order-btn'; downBtn.textContent = '▼'; downBtn.title = '뒤로 (아래로)';
+      downBtn.disabled = row.mixIndex === 0;
+      downBtn.addEventListener('click', (e) => { e.stopPropagation(); moveMixInstance(row.mixIndex, -1); });
+      actions.appendChild(upBtn); actions.appendChild(downBtn);
+      rowEl.appendChild(actions);
+    }
+    el.appendChild(rowEl);
+  });
+}
+// 방향키로 선택된 요소의 위치를 미세 조정 (Shift를 누르면 더 크게 이동). 입력창/텍스트 편집 중에는 개입하지 않음.
+document.addEventListener('keydown', (evt) => {
+  if (!selectedTarget) return;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(evt.key)) return;
+  const activeEl = document.activeElement;
+  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT' || activeEl.isContentEditable)) return;
+  const overlay = document.getElementById('folderPickerOverlay');
+  if (overlay && overlay.style.display === 'flex') return;
+  const posGetter = POS_MAP[selectedTarget];
+  if (!posGetter) return;
+  const pos = posGetter();
+  if (!pos) return;
+  const step = evt.shiftKey ? 10 : 1;
+  if (evt.key === 'ArrowUp') pos.y -= step;
+  else if (evt.key === 'ArrowDown') pos.y += step;
+  else if (evt.key === 'ArrowLeft') pos.x -= step;
+  else if (evt.key === 'ArrowRight') pos.x += step;
+  evt.preventDefault();
+  scheduleRender();
+});
 const SCALE_PROP = { badge: 'size' };
 const SCALE_RANGE = { badge: { min: 60, max: 400, step: 1, unit: 'px' }, bg: { min: 100, max: 250, step: 1, unit: '%' } };
 const DEFAULT_SCALE_RANGE = { min: 40, max: 200, step: 1, unit: '%' };
@@ -1866,9 +2056,9 @@ async function render() {
     mixInstanceBoxes = [];
     for (let i = 0; i < mixInstances.length; i++) {
       const inst = mixInstances[i];
-      const info = ASSETS.products[inst.key];
-      if (!info) { mixInstanceBoxes[i] = null; continue; }
-      const rawImg = await loadImage(info.image);
+      const imgSrc = inst.customSrc || (ASSETS.products[inst.key] && ASSETS.products[inst.key].image);
+      if (!imgSrc) { mixInstanceBoxes[i] = null; continue; }
+      const rawImg = await loadImage(imgSrc);
       const outlinedImg = addCutoutOutline(rawImg, cutoutStrokeColor, cutoutStrokeWidth);
       const targetH = CANVAS * (600 / 1080) * ((inst.scale || 100) / 100);
       const targetW = targetH * (outlinedImg.width / outlinedImg.height);
@@ -2175,6 +2365,7 @@ async function render() {
     }
     ctx.restore();
   }
+  renderLayersPanel();
 }
 
 function fileToDataUrl(file) {
@@ -2184,6 +2375,195 @@ function fileToDataUrl(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+// ---------- 폴더에서 이미지 가져오기 (한 번 폴더를 선택해두면 다음에도 그 폴더를 기억함) ----------
+const FOLDER_PICKER_SUPPORTED = typeof window.showDirectoryPicker === 'function';
+const FOLDER_DB_NAME = 'eq_promo_folder_db';
+const FOLDER_DB_STORE = 'handles';
+const FOLDER_DB_KEY = 'assetFolder';
+function openFolderDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(FOLDER_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(FOLDER_DB_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function saveFolderHandle(handle) {
+  try {
+    const db = await openFolderDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(FOLDER_DB_STORE, 'readwrite');
+      tx.objectStore(FOLDER_DB_STORE).put(handle, FOLDER_DB_KEY);
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { /* 저장 실패해도 이번 세션에서 쓰는 데는 문제 없음 */ }
+}
+async function loadFolderHandle() {
+  try {
+    const db = await openFolderDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(FOLDER_DB_STORE, 'readonly');
+      const req = tx.objectStore(FOLDER_DB_STORE).get(FOLDER_DB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) { return null; }
+}
+async function pickAssetFolder() {
+  const handle = await window.showDirectoryPicker();
+  await saveFolderHandle(handle);
+  return handle;
+}
+async function getRememberedFolder() {
+  if (!FOLDER_PICKER_SUPPORTED) return null;
+  try {
+    const handle = await loadFolderHandle();
+    if (!handle) return null;
+    const perm = await handle.queryPermission({ mode: 'read' });
+    if (perm === 'granted') return handle;
+    const req = await handle.requestPermission({ mode: 'read' });
+    return req === 'granted' ? handle : null;
+  } catch (e) { return null; }
+}
+async function listImagesInDir(dirHandle) {
+  const folders = [];
+  const files = [];
+  for await (const [name, h] of dirHandle.entries()) {
+    if (h.kind === 'directory') folders.push({ name, handle: h });
+    else if (/\.(png|jpe?g|webp)$/i.test(name)) files.push({ name, handle: h });
+  }
+  folders.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  files.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  return { folders, files };
+}
+let folderPickerOnSelect = null;
+let folderPickerPathStack = [];
+function closeFolderPicker() {
+  document.getElementById('folderPickerOverlay').style.display = 'none';
+  folderPickerOnSelect = null;
+}
+async function openFolderPicker(onSelect, title) {
+  folderPickerOnSelect = onSelect;
+  document.getElementById('folderPickerTitle').textContent = title || '폴더에서 사진 가져오기';
+  const overlay = document.getElementById('folderPickerOverlay');
+  overlay.style.display = 'flex';
+  if (!FOLDER_PICKER_SUPPORTED) {
+    renderFolderPickerUnsupported();
+    return;
+  }
+  let handle = await getRememberedFolder();
+  if (!handle) {
+    try { handle = await pickAssetFolder(); } catch (e) { closeFolderPicker(); return; }
+  }
+  folderPickerPathStack = [{ name: handle.name, handle }];
+  await renderFolderPickerLevel();
+}
+async function renderFolderPickerLevel() {
+  const current = folderPickerPathStack[folderPickerPathStack.length - 1].handle;
+  const grid = document.getElementById('folderPickerGrid');
+  grid.textContent = '불러오는 중...';
+  let listed;
+  try { listed = await listImagesInDir(current); }
+  catch (e) { grid.textContent = '이 폴더를 열 수 없어요.'; return; }
+  const { folders, files } = listed;
+  grid.innerHTML = '';
+  const crumb = document.getElementById('folderPickerBreadcrumb');
+  crumb.innerHTML = '';
+  folderPickerPathStack.forEach((seg, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'folder-crumb-btn'; btn.textContent = seg.name;
+    btn.addEventListener('click', () => { folderPickerPathStack = folderPickerPathStack.slice(0, i + 1); renderFolderPickerLevel(); });
+    crumb.appendChild(btn);
+    if (i < folderPickerPathStack.length - 1) crumb.appendChild(document.createTextNode(' / '));
+  });
+  folders.forEach(f => {
+    const tile = document.createElement('div');
+    tile.className = 'folder-picker-tile';
+    const icon = document.createElement('div');
+    icon.className = 'folder-picker-folder-icon'; icon.textContent = '📁';
+    const name = document.createElement('div');
+    name.className = 'folder-picker-name'; name.textContent = f.name;
+    tile.appendChild(icon); tile.appendChild(name);
+    tile.addEventListener('click', () => { folderPickerPathStack.push({ name: f.name, handle: f.handle }); renderFolderPickerLevel(); });
+    grid.appendChild(tile);
+  });
+  files.forEach(f => {
+    const tile = document.createElement('div');
+    tile.className = 'folder-picker-tile';
+    const img = document.createElement('img');
+    tile.appendChild(img);
+    const name = document.createElement('div');
+    name.className = 'folder-picker-name'; name.textContent = f.name;
+    tile.appendChild(name);
+    grid.appendChild(tile);
+    f.handle.getFile().then(file => { img.src = URL.createObjectURL(file); });
+    tile.addEventListener('click', async () => {
+      const file = await f.handle.getFile();
+      const dataUrl = await fileToDataUrl(file);
+      const cb = folderPickerOnSelect;
+      closeFolderPicker();
+      if (cb) cb({ file, dataUrl, name: f.name });
+    });
+  });
+  if (folders.length === 0 && files.length === 0) {
+    grid.textContent = '이 폴더에는 이미지가 없어요.';
+  }
+}
+function renderFolderPickerUnsupported() {
+  document.getElementById('folderPickerBreadcrumb').innerHTML = '';
+  const grid = document.getElementById('folderPickerGrid');
+  grid.innerHTML = '';
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.style.cssText = 'grid-column: 1 / -1;';
+  hint.textContent = '이 브라우저는 폴더 선택을 지원하지 않아요 (Chrome/Edge 권장). 아래에서 이미지 파일을 여러 개 선택해주세요.';
+  grid.appendChild(hint);
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
+  input.style.cssText = 'grid-column: 1 / -1;';
+  input.addEventListener('change', () => {
+    Array.from(grid.querySelectorAll('.folder-picker-tile')).forEach(t => t.remove());
+    Array.from(input.files).forEach(file => {
+      const tile = document.createElement('div');
+      tile.className = 'folder-picker-tile';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      tile.appendChild(img);
+      const name = document.createElement('div');
+      name.className = 'folder-picker-name'; name.textContent = file.name;
+      tile.appendChild(name);
+      tile.addEventListener('click', async () => {
+        const dataUrl = await fileToDataUrl(file);
+        const cb = folderPickerOnSelect;
+        closeFolderPicker();
+        if (cb) cb({ file, dataUrl, name: file.name });
+      });
+      grid.appendChild(tile);
+    });
+  });
+  grid.appendChild(input);
+}
+document.getElementById('folderPickerCloseBtn').addEventListener('click', closeFolderPicker);
+document.getElementById('folderPickerOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'folderPickerOverlay') closeFolderPicker();
+});
+document.getElementById('folderPickerChangeBtn').addEventListener('click', async () => {
+  if (!FOLDER_PICKER_SUPPORTED) return;
+  try {
+    const handle = await pickAssetFolder();
+    folderPickerPathStack = [{ name: handle.name, handle }];
+    await renderFolderPickerLevel();
+  } catch (e) { /* 사용자가 취소함 */ }
+});
+function injectFileIntoInput(inputId, file) {
+  const input = document.getElementById(inputId);
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 // 저장 내역(localStorage)은 용량이 한정돼 있어, 업로드 원본 그대로 넣으면 금방 꽉 찬다.
 // 아카이빙용으로만 크기를 줄이고, 투명 배경이 필요 없는 이미지(배경 사진)는 JPEG로 다시 인코딩해 용량을 크게 줄인다.
