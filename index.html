@@ -258,6 +258,10 @@ button.primary:hover { background: #333; }
   <fieldset data-auto-target="product">
     <legend>1. 제품</legend>
     <select id="product"></select>
+    <div id="mixProductPicker" style="display:none; margin-top:10px;">
+      <div class="hint" style="margin-bottom:6px;">혼합할 제품을 2개 이상 선택하세요. 선택한 제품들이 순서대로 반복되며 배치됩니다.</div>
+      <div id="mixProductList" style="display:flex; flex-wrap:wrap; gap:6px 14px;"></div>
+    </div>
   </fieldset>
 
   <fieldset data-auto-target="product">
@@ -652,10 +656,32 @@ document.querySelectorAll('select.font-select').forEach(sel => {
 const productSel = document.getElementById('product');
 const noneOpt = document.createElement('option'); noneOpt.value = 'none'; noneOpt.textContent = '제품 없음';
 productSel.appendChild(noneOpt);
+const mixOpt = document.createElement('option'); mixOpt.value = 'mix'; mixOpt.textContent = '제품 혼합';
+productSel.appendChild(mixOpt);
 Object.entries(ASSETS.products).forEach(([key, p]) => {
   const opt = document.createElement('option'); opt.value = key; opt.textContent = p.label;
   productSel.appendChild(opt);
 });
+// ---------- 제품 혼합: 여러 제품을 체크박스로 선택 ----------
+const mixProductPicker = document.getElementById('mixProductPicker');
+const mixProductList = document.getElementById('mixProductList');
+Object.entries(ASSETS.products).forEach(([key, p]) => {
+  const label = document.createElement('label');
+  label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; cursor:pointer;';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.id = 'mixProduct_' + key; cb.className = 'mix-product-checkbox'; cb.value = key;
+  label.appendChild(cb);
+  label.appendChild(document.createTextNode(p.label));
+  mixProductList.appendChild(label);
+});
+function getCheckedMixProductKeys() {
+  return Array.from(document.querySelectorAll('.mix-product-checkbox:checked')).map(cb => cb.value);
+}
+function updateMixPickerVisibility() {
+  mixProductPicker.style.display = productSel.value === 'mix' ? '' : 'none';
+}
+productSel.addEventListener('change', updateMixPickerVisibility);
+updateMixPickerVisibility();
 // 프리셋 드롭다운(카피) + "직접 입력" 지원
 function setupPresetSelect(selId, customId, options, { allowBlank = true } = {}) {
   const sel = document.getElementById(selId);
@@ -1223,6 +1249,45 @@ function addCutoutOutline(img, color, width) {
   octx.drawImage(img, pad, pad);
   return out;
 }
+function buildProductGridMixed(imgList, rows, spacingPercent) {
+  const count = imgList.length;
+  if (count <= 1) return imgList[0];
+  const cols = Math.ceil(count / rows);
+  const stepFrac = (typeof spacingPercent === 'number' && !isNaN(spacingPercent) ? spacingPercent : 60) / 100;
+  // 모든 제품 누끼 이미지는 공통 높이(700px)로 정규화되어 있어, 셀 높이는 고정하고
+  // 셀 폭은 이번에 배치되는 이미지 중 가장 넓은 것을 기준으로 잡아 서로 겹치지 않게 한다.
+  const cellH = Math.max(...imgList.map(im => im.height));
+  const cellW = Math.max(...imgList.map(im => im.width));
+  const stepX = cellW * stepFrac;
+  const stepY = cellH * stepFrac;
+  const gridW = cellW + stepX * (cols - 1);
+  const gridH = cellH + stepY * (rows - 1);
+  const off = document.createElement('canvas');
+  off.width = Math.round(gridW); off.height = Math.round(gridH);
+  const octx = off.getContext('2d');
+  for (let r = 0; r < rows; r++) {
+    const remaining = count - r * cols;
+    if (remaining <= 0) break;
+    const itemsInRow = Math.min(cols, remaining);
+    const rowWidth = cellW + stepX * (itemsInRow - 1);
+    const rowOffsetX = (gridW - rowWidth) / 2;
+    let drawOrder;
+    if (itemsInRow % 2 === 1) {
+      const centerIdx = (itemsInRow - 1) / 2;
+      drawOrder = Array.from({ length: itemsInRow }, (_, c) => c)
+        .sort((a, b) => Math.abs(b - centerIdx) - Math.abs(a - centerIdx));
+    } else {
+      drawOrder = Array.from({ length: itemsInRow }, (_, c) => c);
+    }
+    for (const c of drawOrder) {
+      const im = imgList[r * cols + c];
+      const x = rowOffsetX + c * stepX + (cellW - im.width) / 2;
+      const y = r * stepY + (cellH - im.height);
+      octx.drawImage(im, x, y);
+    }
+  }
+  return off;
+}
 function buildProductGrid(img, count, rows, spacingPercent) {
   if (count <= 1) return img;
   const cols = Math.ceil(count / rows);
@@ -1689,7 +1754,9 @@ async function render() {
   ctx.clearRect(0, 0, CANVAS, CANVAS);
 
   const productKey = productSel.value;
-  const product = productKey === 'none' ? null : ASSETS.products[productKey];
+  const isMixMode = productKey === 'mix';
+  const product = (productKey === 'none' || isMixMode) ? null : ASSETS.products[productKey];
+  const mixProductKeys = isMixMode ? getCheckedMixProductKeys() : [];
 
   const mainCopy2 = applyTextCase(getMainCopy2(), mainStyleState2.textCase);
   const mainCopy = applyTextCase(getMainCopy(), mainStyleState.textCase);
@@ -1763,11 +1830,21 @@ async function render() {
 
   lastProductBox = null;
   const productCount = parseInt(document.getElementById('productCount').value, 10);
-  if ((product || cutoutFile) && productCount > 0) {
+  if ((product || cutoutFile || (isMixMode && mixProductKeys.length > 0)) && productCount > 0) {
     const productRows = parseInt(document.getElementById('productRows').value, 10);
     const productSpacing = commonAdjust.product.spacing;
-    const singleImg = await loadImage(cutoutFile ? await fileToDataUrl(cutoutFile) : product.image);
-    const griddedImg = buildProductGrid(singleImg, productCount, productRows, productSpacing);
+    let griddedImg;
+    if (isMixMode) {
+      const mixImgs = [];
+      for (let i = 0; i < productCount; i++) {
+        const key = mixProductKeys[i % mixProductKeys.length];
+        mixImgs.push(await loadImage(ASSETS.products[key].image));
+      }
+      griddedImg = buildProductGridMixed(mixImgs, productRows, productSpacing);
+    } else {
+      const singleImg = await loadImage(cutoutFile ? await fileToDataUrl(cutoutFile) : product.image);
+      griddedImg = buildProductGrid(singleImg, productCount, productRows, productSpacing);
+    }
     const cutoutStrokeColor = document.getElementById('cutoutStrokeColor').value;
     const cutoutStrokeWidth = parseInt(document.getElementById('cutoutStrokeWidth').value, 10) || 0;
     const prodImg = addCutoutOutline(griddedImg, cutoutStrokeColor, cutoutStrokeWidth);
