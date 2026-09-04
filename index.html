@@ -2449,7 +2449,7 @@ function reencodeImageDataUrl(dataUrl, maxDim, mimeType, quality) {
 
 // ---------- 저장(JPG) 아카이빙: 다운로드할 때마다 선택 옵션 전체를 함께 기록해 나중에 그대로 불러올 수 있게 함 ----------
 const ARCHIVE_KEY = 'eq_promo_archive_v1';
-const ARCHIVE_MAX = 24;
+const ARCHIVE_MAX = 60; // 저장 항목을 저화질로만 보관하도록 바꾼 뒤(용량 대폭 감소) 상한을 24 -> 60으로 상향
 const ARCHIVE_FILE_IDS = ['bgFile', 'cutoutFile'];
 const ARCHIVE_DELETE_PASSCODE = '0420'; // 저장 내역 삭제 시 확인하는 비밀번호 (필요하면 이 값을 바꾸세요)
 
@@ -2482,8 +2482,9 @@ async function captureSnapshot() {
       // cutoutFile(누끼컷)은 투명 배경을 유지해야 하므로 PNG, bgFile(배경 사진)은 불투명이라 JPEG로 압축해 용량을 크게 줄인다.
       const needsAlpha = (fid === 'cutoutFile');
       const mimeType = needsAlpha ? 'image/png' : 'image/jpeg';
-      const maxDim = needsAlpha ? 1400 : 1200;
-      const dataUrl = await reencodeImageDataUrl(rawDataUrl, maxDim, mimeType, needsAlpha ? undefined : 0.82);
+      // 저장 내역은 고화질로 보관할 필요 없음(미리보기 + 옵션값 복원용) - 용량을 최대한 줄여 더 많은 항목을 보관할 수 있게 함
+      const maxDim = needsAlpha ? 420 : 380;
+      const dataUrl = await reencodeImageDataUrl(rawDataUrl, maxDim, mimeType, needsAlpha ? undefined : 0.55);
       files[fid] = { name: f.name, type: dataUrl !== rawDataUrl ? mimeType : f.type, dataUrl };
     }
   }
